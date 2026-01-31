@@ -113,6 +113,29 @@ namespace TShockAPI.Handlers.NetModules
 		}
 
 		/// <summary>
+		/// Creates a NetPacket for CreativeUnlocksPlayerReport module
+		/// Format: ModuleId (ushort) + PlayerId (byte) + ItemId (ushort) + Amount (ushort)
+		/// </summary>
+		/// <param name="researcherIndex">The player who performed the research</param>
+		/// <param name="itemId">The item ID that was researched</param>
+		/// <param name="totalAmount">The total amount sacrificed</param>
+		/// <returns>A NetPacket ready to be sent</returns>
+		private static NetPacket CreateResearchPacket(int researcherIndex, int itemId, int totalAmount)
+		{
+			// NetModule packet structure:
+			// - Packet type 82 (LoadNetModule)
+			// - Module ID (ushort) - CreativeUnlocksPlayerReport = 7
+			// - Module data: PlayerId (byte) + ItemId (ushort) + Amount (ushort)
+			const ushort CreativeUnlocksPlayerReportModuleId = 7;
+
+			var packet = NetModule.CreatePacket<NetCreativeUnlocksPlayerReportModule>(5); // 1 + 2 + 2 = 5 bytes of data
+			packet.Writer.Write((byte)researcherIndex);
+			packet.Writer.Write((ushort)itemId);
+			packet.Writer.Write((ushort)totalAmount);
+			return packet;
+		}
+
+		/// <summary>
 		/// Sends a research update to a specific player
 		/// </summary>
 		/// <param name="targetPlayer">The player to send the update to</param>
@@ -123,10 +146,9 @@ namespace TShockAPI.Handlers.NetModules
 		{
 			try
 			{
-				// Use NetCreativeUnlocksPlayerReportModule.Serialize if available in OTAPI 3.3.4+
-				// This creates a properly formatted packet for 1.4.5
-				var response = NetCreativeUnlocksPlayerReportModule.Serialize(researcherIndex, itemId, totalAmount);
-				NetManager.Instance.SendToClient(response, targetPlayer.Index);
+				// Create and send the research update packet for Terraria 1.4.5+
+				var packet = CreateResearchPacket(researcherIndex, itemId, totalAmount);
+				NetManager.Instance.SendToClient(packet, targetPlayer.Index);
 			}
 			catch (Exception ex)
 			{
