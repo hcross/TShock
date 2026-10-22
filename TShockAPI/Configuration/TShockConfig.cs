@@ -109,6 +109,14 @@ namespace TShockAPI.Configuration
 		[Description("The delay between waves. Lower values lead to more mobs.")]
 		public int DefaultSpawnRate = 600;
 
+		/// <summary>Interval in game ticks between forced NPC state re-syncs. On every heartbeat, every active, non-town NPC within NPCSyncHeartbeatRadius tiles of a connected player has its netUpdate flag set, so the vanilla networking code rebroadcasts its authoritative state (packet 23). This works around Terraria 1.4.5.8 multiplayer desyncs where clients keep monsters invisible and unhittable while the server still has them active (Pryaxis/TShock #3317, #3316). Set to 0 to disable.</summary>
+		[Description("Interval in game ticks between forced NPC state re-syncs. On every heartbeat, every active, non-town NPC within NPCSyncHeartbeatRadius tiles of a connected player has its netUpdate flag set, so the vanilla networking code rebroadcasts its authoritative state (packet 23). This works around 1.4.5.8 multiplayer desyncs where clients keep monsters invisible and unhittable while the server still has them active. Set to 0 to disable.")]
+		public int NPCSyncHeartbeatInterval = 30;
+
+		/// <summary>Tile radius used with NPCSyncHeartbeatInterval: only NPCs within this radius of a connected player are force-resynced on each heartbeat.</summary>
+		[Description("Tile radius used with NPCSyncHeartbeatInterval: only NPCs within this radius of a connected player are force-resynced on each heartbeat.")]
+		public int NPCSyncHeartbeatRadius = 96;
+
 		/// <summary>Enables never-ending invasion events. You still need to start the event.</summary>
 		[Description("Enables never ending invasion events. You still need to start the event, such as with the /invade command.")]
 		public bool InfiniteInvasion;

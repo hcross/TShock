@@ -1057,6 +1057,43 @@ namespace TShockAPI
 		/// <summary>LastSave - Used to keep track of SSC save intervals.</summary>
 		private DateTime LastSave = DateTime.UtcNow;
 
+		/// <summary>NPC sync heartbeat tick counter (see TShockSettings.NPCSyncHeartbeatInterval).</summary>
+		private int npcSyncHeartbeatTicks;
+
+		/// <summary>Forces the vanilla networking code to rebroadcast the authoritative state (packet 23) of every
+		/// active, non-town NPC within NPCSyncHeartbeatRadius tiles of a connected player. Terraria 1.4.5.8 servers
+		/// can leave NPCs invisible and unhittable on clients while still active server-side (monsters shooting
+		/// projectiles that are visible on the client, contact damage that cannot be answered); the heartbeat gives
+		/// clients a periodic authoritative snapshot that revives or corrects any stalled NPC slot.</summary>
+		private void RunNpcSyncHeartbeat()
+		{
+			if (Main.netMode != 2)
+				return;
+
+			int radiusPx = TShock.Config.Settings.NPCSyncHeartbeatRadius * 16;
+			long radiusSq = (long)radiusPx * radiusPx;
+
+			for (int i = 0; i < Main.npc.Length; i++)
+			{
+				NPC npc = Main.npc[i];
+				if (npc == null || !npc.active || npc.townNPC || npc.netAlways)
+					continue;
+
+				for (int p = 0; p < Main.maxPlayers; p++)
+				{
+					Player player = Main.player[p];
+					if (player == null || !player.active || player.ghost)
+						continue;
+
+					if (npc.DistanceSQ(player.Center) <= radiusSq)
+					{
+						npc.netUpdate = true;
+						break;
+					}
+				}
+			}
+		}
+
 		/// <summary>OnUpdate - Called when ever the server ticks.</summary>
 		/// <param name="args">args - EventArgs args</param>
 		private void OnUpdate(EventArgs args)
@@ -1070,6 +1107,17 @@ namespace TShockAPI
 
 			if (Backups.IsBackupTime)
 				Backups.Backup();
+
+			int npcSyncInterval = TShock.Config.Settings.NPCSyncHeartbeatInterval;
+			if (npcSyncInterval > 0)
+			{
+				npcSyncHeartbeatTicks++;
+				if (npcSyncHeartbeatTicks >= npcSyncInterval)
+				{
+					npcSyncHeartbeatTicks = 0;
+					RunNpcSyncHeartbeat();
+				}
+			}
 			//call these every second, not every update
 			if ((DateTime.UtcNow - LastCheck).TotalSeconds >= 1)
 			{
