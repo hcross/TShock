@@ -3387,6 +3387,22 @@ namespace TShockAPI
 
 		private static bool HandleNpcStrike(GetDataHandlerArgs args)
 		{
+			if (!HandleNpcStrikeInner(args))
+				return false;
+
+			// A rejected strike is not forwarded to the game, so the client keeps the damage it
+			// predicted locally. Repeated over a few hits, the client's copy of the NPC empties its
+			// health while the server still has it alive: the monster then disappears from the
+			// player's screen (invisible) but keeps dealing contact damage and firing projectiles,
+			// and cannot be hit because the client considers it dead. Sending DamageNPCAck makes
+			// the client discard its predicted damage so the authoritative server state is used
+			// again (Pryaxis/TShock#3318).
+			args.Player.SendData(PacketTypes.DamageNPCAck);
+			return true;
+		}
+
+		private static bool HandleNpcStrikeInner(GetDataHandlerArgs args)
+		{
 			short id = args.Data.ReadInt8();
 			var generation = args.Data.ReadInt8();
 			var dmg = args.Data.ReadInt16();
